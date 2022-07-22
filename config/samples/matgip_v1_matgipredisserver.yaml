@@ -1,0 +1,6 @@
+apiVersion: matgip.matgip.real-estate.corp/v1
+kind: MatgipRedisServer
+metadata:
+  name: matgipredisserver-sample
+spec:
+  # TODO(user): Add fields here

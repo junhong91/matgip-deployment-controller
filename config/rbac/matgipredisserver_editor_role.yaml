@@ -1,0 +1,24 @@
+# permissions for end users to edit matgipredisservers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: matgipredisserver-editor-role
+rules:
+- apiGroups:
+  - matgip.matgip.real-estate.corp
+  resources:
+  - matgipredisservers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - matgip.matgip.real-estate.corp
+  resources:
+  - matgipredisservers/status
+  verbs:
+  - get

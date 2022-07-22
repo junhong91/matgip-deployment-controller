@@ -1,0 +1,25 @@
+domain: matgip.real-estate.corp
+layout:
+- go.kubebuilder.io/v3
+projectName: matgip-deployment-controller
+repo: matgip.real-estate.corp/matgip-deployment-controller
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: matgip.real-estate.corp
+  group: matgip
+  kind: MatgipWebServer
+  path: matgip.real-estate.corp/matgip-deployment-controller/api/v1
+  version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: matgip.real-estate.corp
+  group: matgip
+  kind: MatgipRedisServer
+  path: matgip.real-estate.corp/matgip-deployment-controller/api/v1
+  version: v1
+version: "3"

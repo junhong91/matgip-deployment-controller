@@ -1,0 +1,6 @@
+apiVersion: matgip.matgip.real-estate.corp/v1
+kind: MatgipWebServer
+metadata:
+  name: matgipwebserver-sample
+spec:
+  # TODO(user): Add fields here

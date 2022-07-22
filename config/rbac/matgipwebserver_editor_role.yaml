@@ -1,0 +1,24 @@
+# permissions for end users to edit matgipwebservers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: matgipwebserver-editor-role
+rules:
+- apiGroups:
+  - matgip.matgip.real-estate.corp
+  resources:
+  - matgipwebservers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - matgip.matgip.real-estate.corp
+  resources:
+  - matgipwebservers/status
+  verbs:
+  - get

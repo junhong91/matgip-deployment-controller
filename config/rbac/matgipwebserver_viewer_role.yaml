@@ -1,0 +1,20 @@
+# permissions for end users to view matgipwebservers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: matgipwebserver-viewer-role
+rules:
+- apiGroups:
+  - matgip.matgip.real-estate.corp
+  resources:
+  - matgipwebservers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - matgip.matgip.real-estate.corp
+  resources:
+  - matgipwebservers/status
+  verbs:
+  - get
