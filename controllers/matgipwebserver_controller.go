@@ -19,6 +19,8 @@ package controllers
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,6 +33,26 @@ import (
 type MatgipWebServerReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+}
+
+func (r *MatgipWebServerReconciler) constructSecret(matgipWebServer *matgipv1.MatgipWebServer) (*corev1.Secret, error) {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      matgipWebServer.Name,
+			Namespace: matgipWebServer.Namespace,
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			"news-client-id":     []byte(matgipWebServer.Spec.NewsClientId),
+			"news-client-secret": []byte(matgipWebServer.Spec.NewsClientSecret),
+			"token-secret":       []byte(matgipWebServer.Spec.AuthTokenSecret),
+		},
+	}
+	if err := ctrl.SetControllerReference(matgipWebServer, secret, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	return secret, nil
 }
 
 //+kubebuilder:rbac:groups=matgip.matgip.real-estate.corp,resources=matgipwebservers,verbs=get;list;watch;create;update;patch;delete
@@ -47,9 +69,25 @@ type MatgipWebServerReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.1/pkg/reconcile
 func (r *MatgipWebServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	var matgipWebServer matgipv1.MatgipWebServer
+	if err := r.Get(ctx, req.NamespacedName, &matgipWebServer); err != nil {
+		log.Error(err, "unable to fetch MatgipWebServer")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	log.V(2).Info("Successfully fetch MatgipWebServer CRD...")
+
+	secret, err := r.constructSecret(&matgipWebServer)
+	if err != nil {
+		log.Error(err, "unable to construct matgip secret from CRD...")
+		return ctrl.Result{}, err
+	}
+	if err := r.Create(ctx, secret); err != nil {
+		log.Error(err, "unable to create secret for MatgipWebServer", "secret", secret)
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }

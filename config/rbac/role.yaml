@@ -1,0 +1,59 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - matgip.matgip.real-estate.corp
+  resources:
+  - matgipredisservers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - matgip.matgip.real-estate.corp
+  resources:
+  - matgipredisservers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - matgip.matgip.real-estate.corp
+  resources:
+  - matgipredisservers/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - matgip.matgip.real-estate.corp
+  resources:
+  - matgipwebservers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - matgip.matgip.real-estate.corp
+  resources:
+  - matgipwebservers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - matgip.matgip.real-estate.corp
+  resources:
+  - matgipwebservers/status
+  verbs:
+  - get
+  - patch
+  - update

@@ -3,4 +3,9 @@ kind: MatgipWebServer
 metadata:
   name: matgipwebserver-sample
 spec:
-  # TODO(user): Add fields here
+  portNumber: 3000
+  databaseName: "matgip-db"
+  ingressHostName: "matgip.com"
+  newsClientId: "dTJaT2p6ZFp1aldFbHk2T04wZFU="
+  newsClientSecret: "YzVfOUVVam1rdg=="
+  authTokenSecret: "YWVmZjJhNzhkNTM3NjkzMzgyNjA2M2Q3MDgzYTJjNmMzNmIzMmVmMjU2YmQ1ZWZjYzBmNTZiNjQxODEwMTY4YjM5NmJhODhhZGZmMWYyOTdmNTk2ZmEwOWVlZGM0OWQyOTlkMjg2MzQzNDhkNDRjZTdjMDAxOGNhODE3YjA4NTI="

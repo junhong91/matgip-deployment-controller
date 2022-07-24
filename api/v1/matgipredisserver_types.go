@@ -32,8 +32,13 @@ type MatgipRedisServerSpec struct {
 
 // MatgipRedisServerStatus defines the observed state of MatgipRedisServer
 type MatgipRedisServerStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Reconciled defines whether the host has been successfully reconciled
+	// at least onece. If further changes are made they will be ignored by the
+	// reconciler.
+	Reconciled bool `json:"reconciled"`
+
+	// Defines whether the resource has been provisioned on the target system.
+	InSync bool `json:"inSync"`
 }
 
 //+kubebuilder:object:root=true
