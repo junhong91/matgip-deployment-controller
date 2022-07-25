@@ -63,7 +63,7 @@ var (
 )
 
 // constructDeployment is a method which construct matgip web server deployment
-func (r *MatgipRedisServerReconciler) constructDeployment(matgipWebServer *matgipv1.MatgipWebServer) (*appsv1.Deployment, error)  {
+func (r *MatgipWebServerReconciler) constructDeployment(matgipWebServer *matgipv1.MatgipWebServer) (*appsv1.Deployment, error)  {
 	deployment := &appsv1.Deployment {
 		ObjectMeta: metav1.ObjectMeta {
 			Name: matgipWebServer.Name,
@@ -140,6 +140,9 @@ func (r *MatgipRedisServerReconciler) constructDeployment(matgipWebServer *matgi
 			},
 		},
 	}
+	if err := ctrl.SetControllerReference(matgipWebServer, deployment, r.Scheme); err != nil {
+		return nil, err
+	}
 
 	return deployment, nil
 }
@@ -175,6 +178,16 @@ func (r *MatgipWebServerReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 	if err := r.Create(ctx, secret); err != nil {
 		log.Error(err, "unable to create secret for MatgipWebServer", "secret", secret)
+		return ctrl.Result{}, err
+	}
+	
+	deployment, err := r.constructDeployment(&matgipWebServer)
+	if err != nil {
+		log.Error(err, "unable to construct matgip deployment from CRD...")
+		return ctrl.Result{}, err
+	}
+	if err := r.Create(ctx, deployment); err != nil {
+		log.Error(err, "unable to create deployment for MatgipWebServer", "deployment", deployment)
 		return ctrl.Result{}, err
 	}
 
