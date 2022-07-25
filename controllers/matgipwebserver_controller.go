@@ -21,8 +21,11 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -35,6 +38,11 @@ type MatgipWebServerReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
+
+var (
+	matgipWebServerReplicas int32  = 3
+	matgipWebServerImage    string = "junhong1991/matgip:1.1.0"
+)
 
 // constructSecret is a method which construct matgip web server secret
 func (r *MatgipWebServerReconciler) constructSecret(matgipWebServer *matgipv1.MatgipWebServer) (*corev1.Secret, error) {
@@ -57,47 +65,41 @@ func (r *MatgipWebServerReconciler) constructSecret(matgipWebServer *matgipv1.Ma
 	return secret, nil
 }
 
-var (
-	matgipWebServerReplicas int32 = 3
-	matgipWebServerImage string = "junhong1991/matgip:1.1.0"
-)
-
 // constructDeployment is a method which construct matgip web server deployment
-func (r *MatgipWebServerReconciler) constructDeployment(matgipWebServer *matgipv1.MatgipWebServer) (*appsv1.Deployment, error)  {
-	deployment := &appsv1.Deployment {
-		ObjectMeta: metav1.ObjectMeta {
-			Name: matgipWebServer.Name,
+func (r *MatgipWebServerReconciler) constructDeployment(matgipWebServer *matgipv1.MatgipWebServer) (*appsv1.Deployment, error) {
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      matgipWebServer.Name,
 			Namespace: matgipWebServer.Namespace,
 		},
-		Spec: appsv1.DeploymentSpec {
+		Spec: appsv1.DeploymentSpec{
 			Replicas: &matgipWebServerReplicas,
-			Selector: &metav1.LabelSelector {
-				MatchLabels: map[string]string {
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
 					"app": matgipWebServer.Name,
 				},
 			},
-			Template: corev1.PodTemplateSpec {
-				ObjectMeta: metav1.ObjectMeta {
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: matgipWebServer.Name,
-					Labels: map[string]string {
-						"app": matgipWebServer.Name,
+					Labels: map[string]string{
+						"app":          matgipWebServer.Name,
 						"appNamespace": matgipWebServer.Namespace,
 					},
 				},
 				Spec: corev1.PodSpec{
-					Containers: []corev1.Container {
+					Containers: []corev1.Container{
 						{
-							Name: matgipWebServer.Name,
+							Name:  matgipWebServer.Name,
 							Image: matgipWebServerImage,
-							Ports: []corev1.ContainerPort {
+							Ports: []corev1.ContainerPort{
 								{
-									Name: matgipWebServer.Name,
 									ContainerPort: *matgipWebServer.Spec.PortNumber,
 								},
 							},
 							Env: []corev1.EnvVar{
 								{
-									Name: "REDIS_HOST",
+									Name:  "REDIS_HOST",
 									Value: matgipWebServer.Spec.DatabaseName,
 								},
 								{
@@ -132,7 +134,7 @@ func (r *MatgipWebServerReconciler) constructDeployment(matgipWebServer *matgipv
 											Key: "token-secret",
 										},
 									},
-								},								
+								},
 							},
 						},
 					},
@@ -145,6 +147,40 @@ func (r *MatgipWebServerReconciler) constructDeployment(matgipWebServer *matgipv
 	}
 
 	return deployment, nil
+}
+
+func (r *MatgipWebServerReconciler) constructService(matgipWebServer *matgipv1.MatgipWebServer) (*corev1.Service, error) {
+	service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      matgipWebServer.Name,
+			Namespace: matgipWebServer.Namespace,
+			Labels: map[string]string{
+				"app": matgipWebServer.Name,
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{
+				"app":          matgipWebServer.Name,
+				"appNamespace": matgipWebServer.Namespace,
+			},
+			Ports: []corev1.ServicePort{
+				{
+					Name:     matgipWebServer.Name + "-port",
+					Protocol: corev1.ProtocolTCP,
+					Port:     *matgipWebServer.Spec.PortNumber,
+					TargetPort: intstr.IntOrString{
+						IntVal: *matgipWebServer.Spec.PortNumber,
+					},
+				},
+			},
+		},
+	}
+
+	if err := ctrl.SetControllerReference(matgipWebServer, service, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	return service, nil
 }
 
 //+kubebuilder:rbac:groups=matgip.matgip.real-estate.corp,resources=matgipwebservers,verbs=get;list;watch;create;update;patch;delete
@@ -171,24 +207,57 @@ func (r *MatgipWebServerReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	log.V(2).Info("Successfully fetch MatgipWebServer CRD...")
 
-	secret, err := r.constructSecret(&matgipWebServer)
-	if err != nil {
-		log.Error(err, "unable to construct matgip secret from CRD...")
-		return ctrl.Result{}, err
+	findSecret := types.NamespacedName{
+		Name:      matgipWebServer.Name,
+		Namespace: matgipWebServer.Namespace,
 	}
-	if err := r.Create(ctx, secret); err != nil {
-		log.Error(err, "unable to create secret for MatgipWebServer", "secret", secret)
-		return ctrl.Result{}, err
+	var foundSecret corev1.Secret
+	if err := r.Get(ctx, findSecret, &foundSecret); err != nil && errors.IsNotFound(err) {
+		log.V(2).Info("Create matgip web secret...")
+
+		secret, err := r.constructSecret(&matgipWebServer)
+		if err != nil {
+			log.Error(err, "unable to construct matgip secret from CRD...")
+			return ctrl.Result{}, err
+		}
+		if err := r.Create(ctx, secret); err != nil {
+			log.Error(err, "unable to create secret for MatgipWebServer", "secret", secret)
+			return ctrl.Result{}, err
+		}
 	}
-	
-	deployment, err := r.constructDeployment(&matgipWebServer)
-	if err != nil {
-		log.Error(err, "unable to construct matgip deployment from CRD...")
-		return ctrl.Result{}, err
+
+	findDeployment := types.NamespacedName{
+		Name:      matgipWebServer.Name,
+		Namespace: matgipWebServer.Namespace,
 	}
-	if err := r.Create(ctx, deployment); err != nil {
-		log.Error(err, "unable to create deployment for MatgipWebServer", "deployment", deployment)
-		return ctrl.Result{}, err
+	var foundDeployment appsv1.Deployment
+	if err := r.Get(ctx, findDeployment, &foundDeployment); err != nil && errors.IsNotFound(err) {
+		deployment, err := r.constructDeployment(&matgipWebServer)
+		if err != nil {
+			log.Error(err, "unable to construct matgip deployment from CRD...")
+			return ctrl.Result{}, err
+		}
+		if err := r.Create(ctx, deployment); err != nil {
+			log.Error(err, "unable to create deployment for MatgipWebServer", "deployment", deployment)
+			return ctrl.Result{}, err
+		}
+	}
+
+	findService := types.NamespacedName{
+		Name:      matgipWebServer.Name,
+		Namespace: matgipWebServer.Namespace,
+	}
+	var foundService corev1.Service
+	if err := r.Get(ctx, findService, &foundService); err != nil && errors.IsNotFound(err) {
+		service, err := r.constructService(&matgipWebServer)
+		if err != nil {
+			log.Error(err, "unable to construct matgip service from CRD...")
+			return ctrl.Result{}, err
+		}
+		if err := r.Create(ctx, service); err != nil {
+			log.Error(err, "unable to create service for MatgipWebServer", "service", service)
+			return ctrl.Result{}, err
+		}
 	}
 
 	return ctrl.Result{}, nil
