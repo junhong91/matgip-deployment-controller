@@ -57,7 +57,10 @@ func (r *MatgipWebServerReconciler) constructSecret(matgipWebServer *matgipv1.Ma
 	return secret, nil
 }
 
-var matgipWebServerReplicas int32 = 3
+var (
+	matgipWebServerReplicas int32 = 3
+	matgipWebServerImage string = "junhong1991/matgip:1.1.0"
+)
 
 // constructDeployment is a method which construct matgip web server deployment
 func (r *MatgipRedisServerReconciler) constructDeployment(matgipWebServer *matgipv1.MatgipWebServer) (*appsv1.Deployment, error)  {
@@ -83,7 +86,55 @@ func (r *MatgipRedisServerReconciler) constructDeployment(matgipWebServer *matgi
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container {
-
+						{
+							Name: matgipWebServer.Name,
+							Image: matgipWebServerImage,
+							Ports: []corev1.ContainerPort {
+								{
+									Name: matgipWebServer.Name,
+									ContainerPort: *matgipWebServer.Spec.PortNumber,
+								},
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: "REDIS_HOST",
+									Value: matgipWebServer.Spec.DatabaseName,
+								},
+								{
+									Name: "NAVER_CLIENT_ID",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: matgipWebServer.Name,
+											},
+											Key: "news-client-id",
+										},
+									},
+								},
+								{
+									Name: "NAVER_CLIENT_SECRET",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: matgipWebServer.Name,
+											},
+											Key: "news-client-secret",
+										},
+									},
+								},
+								{
+									Name: "TOKEN_SECRET",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: matgipWebServer.Name,
+											},
+											Key: "token-secret",
+										},
+									},
+								},								
+							},
+						},
 					},
 				},
 			},
