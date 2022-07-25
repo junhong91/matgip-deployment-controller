@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,6 +36,7 @@ type MatgipWebServerReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+// constructSecret is a method which construct matgip web server secret
 func (r *MatgipWebServerReconciler) constructSecret(matgipWebServer *matgipv1.MatgipWebServer) (*corev1.Secret, error) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -53,6 +55,42 @@ func (r *MatgipWebServerReconciler) constructSecret(matgipWebServer *matgipv1.Ma
 	}
 
 	return secret, nil
+}
+
+var matgipWebServerReplicas int32 = 3
+
+// constructDeployment is a method which construct matgip web server deployment
+func (r *MatgipRedisServerReconciler) constructDeployment(matgipWebServer *matgipv1.MatgipWebServer) (*appsv1.Deployment, error)  {
+	deployment := &appsv1.Deployment {
+		ObjectMeta: metav1.ObjectMeta {
+			Name: matgipWebServer.Name,
+			Namespace: matgipWebServer.Namespace,
+		},
+		Spec: appsv1.DeploymentSpec {
+			Replicas: &matgipWebServerReplicas,
+			Selector: &metav1.LabelSelector {
+				MatchLabels: map[string]string {
+					"app": matgipWebServer.Name,
+				},
+			},
+			Template: corev1.PodTemplateSpec {
+				ObjectMeta: metav1.ObjectMeta {
+					Name: matgipWebServer.Name,
+					Labels: map[string]string {
+						"app": matgipWebServer.Name,
+						"appNamespace": matgipWebServer.Namespace,
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container {
+
+					},
+				},
+			},
+		},
+	}
+
+	return deployment, nil
 }
 
 //+kubebuilder:rbac:groups=matgip.matgip.real-estate.corp,resources=matgipwebservers,verbs=get;list;watch;create;update;patch;delete
